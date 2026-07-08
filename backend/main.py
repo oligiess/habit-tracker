@@ -49,6 +49,21 @@ def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
     return new_habit
 
 
+@app.get("/api/habits", response_model=list[HabitOut])
+def list_habits(db: Session = Depends(get_db)):
+    return db.query(Habit).order_by(Habit.created_at).all()
+
+
+@app.delete("/api/habits/{habit_id}", status_code=204)
+def delete_habit(habit_id: int, db: Session = Depends(get_db)):
+    habit = db.get(Habit, habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    db.delete(habit)
+    db.commit()
+
+
 @app.post("/api/habits/{habit_id}/completions", response_model=CompletionOut)
 def mark_habit_done(habit_id: int, db: Session = Depends(get_db)):
     habit = db.get(Habit, habit_id)
