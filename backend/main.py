@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
+from datetime import date
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
-from models import Habit
-from schemas import HabitCreate, HabitOut
+from models import Completion, Habit
+from schemas import CompletionOut, HabitCreate, HabitOut
 
 
 @asynccontextmanager
@@ -46,3 +47,25 @@ def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_habit)
     return new_habit
+
+
+@app.post("/api/habits/{habit_id}/completions", response_model=CompletionOut)
+def mark_habit_done(habit_id: int, db: Session = Depends(get_db)):
+    habit = db.get(Habit, habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    today = date.today()
+    existing = (
+        db.query(Completion)
+        .filter(Completion.habit_id == habit_id, Completion.completed_date == today)
+        .first()
+    )
+    if existing is not None:
+        return existing
+
+    completion = Completion(habit_id=habit_id, completed_date=today)
+    db.add(completion)
+    db.commit()
+    db.refresh(completion)
+    return completion

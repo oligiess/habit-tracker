@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,3 +13,11 @@ class HabitOut(BaseModel):
     id: int
     name: str
     created_at: datetime
+
+
+class CompletionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    habit_id: int
+    completed_date: date

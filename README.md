@@ -36,7 +36,7 @@ Open http://localhost:5500 in a browser.
 - [x] Repo scaffold
 - [x] Backend + frontend hello-world loop
 - [x] Database schema + connection
-- [ ] Habit CRUD (create-habit endpoint done, list/update/delete still to do)
+- [ ] Habit CRUD (create-habit + mark-habit-done endpoints done, list/update/delete still to do)
 - [ ] Streak logic
 - [ ] Styling pass
 - [ ] Deployment
