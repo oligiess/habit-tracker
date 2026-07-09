@@ -1,5 +1,6 @@
+from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +9,9 @@ from sqlalchemy.orm import Session
 from database import Base, engine, get_db
 from models import Completion, Habit
 from schemas import CompletionOut, HabitCreate, HabitOut
+from streaks import compute_streaks
+
+HISTORY_WINDOW_DAYS = 30
 
 
 @asynccontextmanager
@@ -46,12 +50,50 @@ def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
     db.add(new_habit)
     db.commit()
     db.refresh(new_habit)
-    return new_habit
+    return HabitOut(
+        id=new_habit.id,
+        name=new_habit.name,
+        created_at=new_habit.created_at,
+        current_streak=0,
+        longest_streak=0,
+        history=[],
+    )
 
 
 @app.get("/api/habits", response_model=list[HabitOut])
 def list_habits(db: Session = Depends(get_db)):
-    return db.query(Habit).order_by(Habit.created_at).all()
+    habits = db.query(Habit).order_by(Habit.created_at).all()
+    if not habits:
+        return []
+
+    habit_ids = [habit.id for habit in habits]
+    completions = (
+        db.query(Completion).filter(Completion.habit_id.in_(habit_ids)).all()
+    )
+
+    dates_by_habit: dict[int, set[date]] = defaultdict(set)
+    for completion in completions:
+        dates_by_habit[completion.habit_id].add(completion.completed_date)
+
+    today = date.today()
+    window_start = today - timedelta(days=HISTORY_WINDOW_DAYS - 1)
+
+    result = []
+    for habit in habits:
+        completed_dates = dates_by_habit[habit.id]
+        current_streak, longest_streak = compute_streaks(completed_dates, today)
+        history = sorted(d for d in completed_dates if d >= window_start)
+        result.append(
+            HabitOut(
+                id=habit.id,
+                name=habit.name,
+                created_at=habit.created_at,
+                current_streak=current_streak,
+                longest_streak=longest_streak,
+                history=history,
+            )
+        )
+    return result
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)

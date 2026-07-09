@@ -13,6 +13,9 @@ class HabitOut(BaseModel):
     id: int
     name: str
     created_at: datetime
+    current_streak: int
+    longest_streak: int
+    history: list[date]
 
 
 class CompletionOut(BaseModel):
