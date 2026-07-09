@@ -1,14 +1,28 @@
 const API_BASE = "http://localhost:8000/api";
+const DOT_STRIP_DAYS = 7;
 
 const statusEl = document.getElementById("status");
 const habitListEl = document.getElementById("habit-list");
 const addHabitForm = document.getElementById("add-habit-form");
 const habitNameInput = document.getElementById("habit-name-input");
 
-// Habit IDs marked done during this page session. Re-rendering the list
-// (e.g. after adding another habit) must not lose this state. Not persisted
-// across a page reload yet — that's Milestone 4's history/streak work.
-const doneTodayIds = new Set();
+function formatDateISO(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLastNDays(n) {
+  const today = new Date();
+  const days = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(formatDateISO(d));
+  }
+  return days;
+}
 
 async function loadStatus() {
   try {
@@ -49,36 +63,49 @@ function renderHabits(habits) {
 
   for (const habit of habits) {
     const li = document.createElement("li");
+    const historySet = new Set(habit.history);
+    const todayStr = formatDateISO(new Date());
+    const isDoneToday = historySet.has(todayStr);
 
     const nameSpan = document.createElement("span");
     nameSpan.textContent = habit.name;
 
+    const streakSpan = document.createElement("span");
+    streakSpan.textContent = ` — 🔥 ${habit.current_streak} day streak (longest: ${habit.longest_streak})`;
+
+    const dotStrip = document.createElement("span");
+    for (const day of getLastNDays(DOT_STRIP_DAYS)) {
+      const dot = document.createElement("span");
+      dot.textContent = historySet.has(day) ? "●" : "○";
+      dot.title = day;
+      dotStrip.appendChild(dot);
+    }
+
     const markDoneBtn = document.createElement("button");
-    const isDoneToday = doneTodayIds.has(habit.id);
     markDoneBtn.textContent = isDoneToday ? "✓ Done today" : "Mark done today";
     markDoneBtn.disabled = isDoneToday;
-    markDoneBtn.addEventListener("click", () => markHabitDone(habit.id, markDoneBtn));
+    markDoneBtn.addEventListener("click", () => markHabitDone(habit.id));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", () => deleteHabit(habit.id));
 
     li.appendChild(nameSpan);
+    li.appendChild(streakSpan);
+    li.appendChild(dotStrip);
     li.appendChild(markDoneBtn);
     li.appendChild(deleteBtn);
     habitListEl.appendChild(li);
   }
 }
 
-async function markHabitDone(habitId, button) {
+async function markHabitDone(habitId) {
   try {
     const response = await fetch(`${API_BASE}/habits/${habitId}/completions`, {
       method: "POST",
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    doneTodayIds.add(habitId);
-    button.textContent = "✓ Done today";
-    button.disabled = true;
+    await loadHabits();
   } catch (err) {
     alert(`Error marking habit done: ${err.message}`);
     console.error(err);
@@ -93,7 +120,6 @@ async function deleteHabit(habitId) {
       method: "DELETE",
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    doneTodayIds.delete(habitId);
     await loadHabits();
   } catch (err) {
     alert(`Error deleting habit: ${err.message}`);
