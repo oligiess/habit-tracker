@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
@@ -22,13 +23,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Frontend will be served from these origins during local dev.
-# Both localhost and 127.0.0.1 are listed because browsers treat them
-# as different origins for CORS purposes even though they resolve the same.
-origins = [
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-]
+
+def get_allowed_origins() -> list[str]:
+    # ALLOWED_ORIGINS is a comma-separated list, set in production (e.g. Render)
+    # to add the deployed frontend's origin. Both localhost and 127.0.0.1 are
+    # listed as the default because browsers treat them as different origins
+    # for CORS purposes even though they resolve the same.
+    raw = os.getenv("ALLOWED_ORIGINS")
+    if not raw:
+        return ["http://localhost:5500", "http://127.0.0.1:5500"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+origins = get_allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,
