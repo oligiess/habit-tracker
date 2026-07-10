@@ -10,7 +10,7 @@ build: frontend, backend, database, and deployment.
 - Frontend: HTML / CSS / JavaScript (no framework, no build step)
 - Backend: Python, FastAPI
 - Database: Postgres via Supabase, accessed with SQLAlchemy
-- Deployment: Vercel (frontend) + Railway/Render (backend) — planned, not yet done
+- Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) (frontend) + [Render](https://habit-tracker-api-2lkb.onrender.com) (backend)
 
 ## Local Development (current state)
 
@@ -37,7 +37,7 @@ Open http://localhost:5500 in a browser.
 - [x] Backend + frontend hello-world loop
 - [x] Database schema + connection
 - [x] Habit CRUD (create, list, mark done today, delete — wired up in both backend and frontend)
-- [ ] Streak logic
-- [ ] Styling pass
-- [ ] Deployment
+- [x] Streak logic
+- [x] Styling pass
+- [x] Deployment
 - [ ] Final README polish (screenshot, live link)
