@@ -1,18 +1,36 @@
-# Habit Tracker
+# HabitDeck
 
-A simple habit tracking web app — a solo project to practice a full end-to-end
-build: frontend, backend, database, and deployment.
+A simple web app for tracking daily habits: create habits, mark them
+done each day, and watch your streaks build over time. Built solo as an
+end-to-end practice project: frontend, backend, database, and deployment, kept
+deliberately simple rather than feature-heavy.
 
-> Status: early scaffold / hello-world stage. This README will be expanded with
-> a description, screenshots, and live link once the app is feature-complete.
+## Live Demo
+- App: https://habit-tracker-og111.vercel.app/
+- API: https://habit-tracker-api-2lkb.onrender.com/api/health
+
+> Note: the backend runs on Render's free tier, which spins down after ~15
+> minutes of inactivity. The first request after idle can take 30-50 seconds
+> to wake back up — if the app looks stuck on load, give it a moment.
+
+## Screenshot
+![HabitDeck screenshot](docs/screenshot.png)
+
+## Features
+- Create habits to track
+- Mark a habit done for today (idempotent — repeat clicks the same day are a no-op)
+- Current streak and longest streak per habit, computed server-side
+- 7-day dot strip + 30-day history per habit
+- Light/dark theme toggle
+- No login/accounts — single-user by design
 
 ## Tech Stack
 - Frontend: HTML / CSS / JavaScript (no framework, no build step)
 - Backend: Python, FastAPI
-- Database: Postgres via Supabase, accessed with SQLAlchemy
+- Database: Postgres via Supabase, accessed with SQLAlchemy 2.0
 - Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) (frontend) + [Render](https://habit-tracker-api-2lkb.onrender.com) (backend)
 
-## Local Development (current state)
+## How to Run Locally
 
 ### Backend
 ```
@@ -32,12 +50,5 @@ python -m http.server 5500
 ```
 Open http://localhost:5500 in a browser.
 
-## Project Status
-- [x] Repo scaffold
-- [x] Backend + frontend hello-world loop
-- [x] Database schema + connection
-- [x] Habit CRUD (create, list, mark done today, delete — wired up in both backend and frontend)
-- [x] Streak logic
-- [x] Styling pass
-- [x] Deployment
-- [ ] Final README polish (screenshot, live link)
+## License
+MIT — see [LICENSE](LICENSE).
