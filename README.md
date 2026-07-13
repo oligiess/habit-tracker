@@ -13,36 +13,41 @@ deliberately simple rather than feature-heavy.
 ![HabitDeck screenshot](docs/screenshot.png)
 
 ## Features
-- Create habits to track
-- Mark a habit done for today (idempotent — repeat clicks the same day are a no-op)
+- Accounts via Supabase Auth (email/password) — every habit is scoped to its
+  owner
+- Create, rename, and archive habits; daily or N-times-a-week cadence
+- Mark a habit done for today (idempotent — repeat clicks the same day are a
+  no-op)
 - Current streak and longest streak per habit, computed server-side
-- 7-day dot strip + 30-day history per habit
+- Dashboard with weekly completion chart, month heatmap, and aggregate stats
+  (active streak, best streak, month completion %)
 - Light/dark theme toggle
-- No login/accounts — single-user by design
 
 ## Tech Stack
-- Frontend: HTML / CSS / JavaScript (no framework, no build step)
+- Frontend: Vite, React, TypeScript, Tailwind CSS, a small Radix/shadcn
+  component subset, lucide-react icons, Recharts
 - Backend: Python, FastAPI
+- Auth: Supabase Auth (JWT verified locally against Supabase's JWKS endpoint)
 - Database: Postgres via Supabase, accessed with SQLAlchemy 2.0
 - Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) — frontend
-  (static, served from `public/`) and backend (FastAPI as a Python
-  serverless function) as one project.
+  (static build) and backend (FastAPI as a Python serverless function) as one
+  project.
 
 ## How to Run Locally
-Requires the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`).
-One-time setup: `vercel login`, then `vercel link` to connect this repo to
-the Vercel project.
-
 ```
 python -m venv .venv
 .venv\Scripts\Activate.ps1   # Windows PowerShell
 pip install -r requirements.txt
-copy .env.example .env       # then fill in DATABASE_URL with your Supabase connection string
-vercel dev
+copy .env.example .env       # fill in DATABASE_URL, SUPABASE_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+uvicorn backend.main:app --port 8000 --reload
 ```
-Runs the frontend and backend together on one local origin — open the URL
-`vercel dev` prints (typically http://localhost:3000) and check
-`/api/health`.
+In a second terminal:
+```
+npm install
+npm run dev
+```
+The frontend runs at http://localhost:5173 and proxies `/api` requests to
+the backend on port 8000 (see `vite.config.ts`).
 
 ## License
 MIT — see [LICENSE](LICENSE).

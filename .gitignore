@@ -18,8 +18,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Future frontend tooling
+# Frontend
 node_modules/
+dist/
 
 # Logs
 *.log
