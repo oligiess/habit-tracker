@@ -16,6 +16,10 @@ class Habit(Base):
         UUID(as_uuid=True), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(100))
+    target: Mapped[str | None] = mapped_column(String(100))
+    target_per_week: Mapped[int | None] = mapped_column()
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

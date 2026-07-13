@@ -3,7 +3,7 @@ import os
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,10 +14,20 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user_id
 from .database import Base, engine, get_db
 from .models import Completion, Habit
-from .schemas import CompletionOut, HabitCreate, HabitOut
-from .streaks import compute_streaks
+from .schemas import (
+    CompletionOut,
+    HabitCreate,
+    HabitOut,
+    HabitPatch,
+    HeatmapEntry,
+    StatsSummary,
+    WeeklyStatEntry,
+    WeekProgress,
+)
+from .streaks import compute_perfect_day_streaks, compute_streaks, compute_weekly_streak
 
 HISTORY_WINDOW_DAYS = 30
+WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +72,46 @@ app.add_middleware(
 )
 
 
+def _week_bounds(today: date) -> tuple[date, date]:
+    """Return (monday, sunday) of the Mon-Sun week containing today."""
+    monday = today - timedelta(days=today.weekday())
+    return monday, monday + timedelta(days=6)
+
+
+def _build_habit_out(habit: Habit, completed_dates: set[date], today: date) -> HabitOut:
+    current_streak, longest_streak = compute_streaks(completed_dates, today)
+    window_start = today - timedelta(days=HISTORY_WINDOW_DAYS - 1)
+    history = sorted(d for d in completed_dates if d >= window_start)
+
+    week_progress = None
+    if habit.target_per_week is not None:
+        monday, sunday = _week_bounds(today)
+        week_completed = sum(1 for d in completed_dates if monday <= d <= sunday)
+        week_current, week_longest = compute_weekly_streak(
+            completed_dates, habit.target_per_week, today
+        )
+        week_progress = WeekProgress(
+            completed=week_completed,
+            target=habit.target_per_week,
+            current_streak=week_current,
+            longest_streak=week_longest,
+        )
+
+    return HabitOut(
+        id=habit.id,
+        name=habit.name,
+        category=habit.category,
+        target=habit.target,
+        target_per_week=habit.target_per_week,
+        archived=habit.archived_at is not None,
+        created_at=habit.created_at,
+        current_streak=current_streak,
+        longest_streak=longest_streak,
+        history=history,
+        week_progress=week_progress,
+    )
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "message": "Backend is alive"}
@@ -73,31 +123,29 @@ def create_habit(
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    new_habit = Habit(name=habit.name, user_id=user_id)
+    new_habit = Habit(
+        name=habit.name,
+        user_id=user_id,
+        category=habit.category,
+        target=habit.target,
+        target_per_week=habit.target_per_week,
+    )
     db.add(new_habit)
     db.commit()
     db.refresh(new_habit)
-    return HabitOut(
-        id=new_habit.id,
-        name=new_habit.name,
-        created_at=new_habit.created_at,
-        current_streak=0,
-        longest_streak=0,
-        history=[],
-    )
+    return _build_habit_out(new_habit, set(), date.today())
 
 
 @app.get("/api/habits", response_model=list[HabitOut])
 def list_habits(
+    include_archived: bool = False,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    habits = (
-        db.query(Habit)
-        .filter(Habit.user_id == user_id)
-        .order_by(Habit.created_at)
-        .all()
-    )
+    query = db.query(Habit).filter(Habit.user_id == user_id)
+    if not include_archived:
+        query = query.filter(Habit.archived_at.is_(None))
+    habits = query.order_by(Habit.created_at).all()
     if not habits:
         return []
 
@@ -111,24 +159,44 @@ def list_habits(
         dates_by_habit[completion.habit_id].add(completion.completed_date)
 
     today = date.today()
-    window_start = today - timedelta(days=HISTORY_WINDOW_DAYS - 1)
+    return [_build_habit_out(habit, dates_by_habit[habit.id], today) for habit in habits]
 
-    result = []
-    for habit in habits:
-        completed_dates = dates_by_habit[habit.id]
-        current_streak, longest_streak = compute_streaks(completed_dates, today)
-        history = sorted(d for d in completed_dates if d >= window_start)
-        result.append(
-            HabitOut(
-                id=habit.id,
-                name=habit.name,
-                created_at=habit.created_at,
-                current_streak=current_streak,
-                longest_streak=longest_streak,
-                history=history,
-            )
-        )
-    return result
+
+@app.patch("/api/habits/{habit_id}", response_model=HabitOut)
+def update_habit(
+    habit_id: int,
+    patch: HabitPatch,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user_id)
+        .first()
+    )
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    updates = patch.model_dump(exclude_unset=True)
+    archived = updates.pop("archived", None)
+    for field, value in updates.items():
+        setattr(habit, field, value)
+
+    if archived is True:
+        habit.archived_at = datetime.now(timezone.utc)
+    elif archived is False:
+        habit.archived_at = None
+
+    db.commit()
+    db.refresh(habit)
+
+    completed_dates = {
+        completion.completed_date
+        for completion in db.query(Completion)
+        .filter(Completion.habit_id == habit.id)
+        .all()
+    }
+    return _build_habit_out(habit, completed_dates, date.today())
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)
@@ -160,7 +228,7 @@ def mark_habit_done(
         .filter(Habit.id == habit_id, Habit.user_id == user_id)
         .first()
     )
-    if habit is None:
+    if habit is None or habit.archived_at is not None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
     today = date.today()
@@ -177,3 +245,143 @@ def mark_habit_done(
     db.commit()
     db.refresh(completion)
     return completion
+
+
+def _active_daily_habits(db: Session, user_id: uuid.UUID) -> list[Habit]:
+    return (
+        db.query(Habit)
+        .filter(
+            Habit.user_id == user_id,
+            Habit.archived_at.is_(None),
+            Habit.target_per_week.is_(None),
+        )
+        .all()
+    )
+
+
+@app.get("/api/stats/weekly", response_model=list[WeeklyStatEntry])
+def weekly_stats(
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    today = date.today()
+    monday, sunday = _week_bounds(today)
+
+    habits = _active_daily_habits(db, user_id)
+    total = len(habits)
+
+    counts_by_date: dict[date, int] = defaultdict(int)
+    if total > 0:
+        habit_ids = [habit.id for habit in habits]
+        completions = (
+            db.query(Completion)
+            .filter(
+                Completion.habit_id.in_(habit_ids),
+                Completion.completed_date >= monday,
+                Completion.completed_date <= sunday,
+            )
+            .all()
+        )
+        for completion in completions:
+            counts_by_date[completion.completed_date] += 1
+
+    return [
+        WeeklyStatEntry(
+            day=WEEKDAY_LABELS[i],
+            date=monday + timedelta(days=i),
+            completed=counts_by_date.get(monday + timedelta(days=i), 0),
+            total=total,
+        )
+        for i in range(7)
+    ]
+
+
+@app.get("/api/stats/heatmap", response_model=list[HeatmapEntry])
+def heatmap_stats(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    today = date.today()
+    if month is None:
+        year, month_num = today.year, today.month
+    else:
+        try:
+            year_str, month_str = month.split("-")
+            year, month_num = int(year_str), int(month_str)
+            date(year, month_num, 1)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="month must be in YYYY-MM format")
+
+    month_start = date(year, month_num, 1)
+    if month_start > today:
+        raise HTTPException(status_code=400, detail="month cannot be in the future")
+
+    next_month_start = date(year + (month_num == 12), (month_num % 12) + 1, 1)
+    month_end_exclusive = min(next_month_start, today + timedelta(days=1))
+
+    habits = _active_daily_habits(db, user_id)
+    total = len(habits)
+
+    counts_by_date: dict[date, int] = defaultdict(int)
+    if total > 0:
+        habit_ids = [habit.id for habit in habits]
+        completions = (
+            db.query(Completion)
+            .filter(
+                Completion.habit_id.in_(habit_ids),
+                Completion.completed_date >= month_start,
+                Completion.completed_date < month_end_exclusive,
+            )
+            .all()
+        )
+        for completion in completions:
+            counts_by_date[completion.completed_date] += 1
+
+    result = []
+    cursor = month_start
+    while cursor < month_end_exclusive:
+        completed = counts_by_date.get(cursor, 0)
+        level = round(completed / total * 4) if total > 0 else 0
+        result.append(HeatmapEntry(date=cursor, level=level))
+        cursor += timedelta(days=1)
+    return result
+
+
+@app.get("/api/stats/summary", response_model=StatsSummary)
+def stats_summary(
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    today = date.today()
+    habits = _active_daily_habits(db, user_id)
+    if not habits:
+        return StatsSummary(active_streak=0, best_streak=0, month_completion_pct=0.0)
+
+    habit_ids = [habit.id for habit in habits]
+    completions = (
+        db.query(Completion).filter(Completion.habit_id.in_(habit_ids)).all()
+    )
+    dates_by_habit: dict[int, set[date]] = defaultdict(set)
+    for completion in completions:
+        dates_by_habit[completion.habit_id].add(completion.completed_date)
+    for habit_id in habit_ids:
+        dates_by_habit.setdefault(habit_id, set())
+
+    active_streak, best_streak = compute_perfect_day_streaks(dates_by_habit, today)
+
+    month_start = today.replace(day=1)
+    days_elapsed = (today - month_start).days + 1
+    possible = days_elapsed * len(habit_ids)
+    completed_this_month = sum(
+        1 for dates in dates_by_habit.values() for d in dates if d >= month_start
+    )
+    month_completion_pct = (
+        round(completed_this_month / possible * 100, 1) if possible else 0.0
+    )
+
+    return StatsSummary(
+        active_streak=active_streak,
+        best_streak=best_streak,
+        month_completion_pct=month_completion_pct,
+    )
