@@ -67,7 +67,7 @@ export default function LoginPage() {
             </div>
           )}
           {info && (
-            <div className="mb-4 rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent-foreground">
+            <div className="mb-4 rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
               {info}
             </div>
           )}
