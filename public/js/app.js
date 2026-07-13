@@ -2,6 +2,30 @@ const API_BASE = "/api";
 const DOT_STRIP_DAYS = 7;
 const RING_RADIUS = 24;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const TOKEN_KEY = "habitdeck_token";
+
+const token = localStorage.getItem(TOKEN_KEY);
+if (!token) {
+  window.location.href = "login.html";
+}
+
+async function authFetch(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+  });
+  if (response.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = "login.html";
+    throw new Error("Session expired");
+  }
+  return response;
+}
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  localStorage.removeItem(TOKEN_KEY);
+  window.location.href = "login.html";
+});
 
 const statusEl = document.getElementById("status");
 const todayEl = document.getElementById("today");
@@ -71,7 +95,7 @@ async function loadStatus() {
 
 async function loadHabits() {
   try {
-    const response = await fetch(`${API_BASE}/habits`);
+    const response = await authFetch(`${API_BASE}/habits`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const habits = await response.json();
     renderHabits(habits);
@@ -159,7 +183,7 @@ function renderHabits(habits) {
 async function markHabitDone(habitId) {
   hideError();
   try {
-    const response = await fetch(`${API_BASE}/habits/${habitId}/completions`, {
+    const response = await authFetch(`${API_BASE}/habits/${habitId}/completions`, {
       method: "POST",
     });
     if (!response.ok) {
@@ -178,7 +202,7 @@ async function deleteHabit(habitId) {
 
   hideError();
   try {
-    const response = await fetch(`${API_BASE}/habits/${habitId}`, {
+    const response = await authFetch(`${API_BASE}/habits/${habitId}`, {
       method: "DELETE",
     });
     if (!response.ok) {
@@ -199,7 +223,7 @@ addHabitForm.addEventListener("submit", async (event) => {
 
   hideError();
   try {
-    const response = await fetch(`${API_BASE}/habits`, {
+    const response = await authFetch(`${API_BASE}/habits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),

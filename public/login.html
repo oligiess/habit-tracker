@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HabitDeck — Log in</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap" style="max-width: 380px;">
+    <header>
+      <div>
+        <h1>HabitDeck</h1>
+        <p class="sub">one step at a time</p>
+      </div>
+    </header>
+
+    <div id="error-banner" class="error-banner" hidden role="alert">
+      <span id="error-banner-text"></span>
+      <button type="button" id="error-banner-dismiss" class="error-banner-dismiss" aria-label="Dismiss error">&times;</button>
+    </div>
+
+    <form id="auth-form" class="add-panel" style="flex-direction: column; align-items: stretch;">
+      <input type="email" id="email-input" placeholder="Email" required autocomplete="email" />
+      <input type="password" id="password-input" placeholder="Password" required autocomplete="current-password" minlength="6" />
+      <button type="submit" class="add-btn" id="submit-btn" style="padding: 10px 22px;">Log in</button>
+    </form>
+
+    <p class="sub" style="text-align: center;">
+      <a href="#" id="toggle-mode">Need an account? Sign up</a>
+    </p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

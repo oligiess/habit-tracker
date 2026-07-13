@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from .auth import get_current_user_id
 from .database import Base, engine, get_db
 from .models import Completion, Habit
 from .schemas import CompletionOut, HabitCreate, HabitOut
@@ -66,8 +68,12 @@ def health():
 
 
 @app.post("/api/habits", response_model=HabitOut, status_code=201)
-def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
-    new_habit = Habit(name=habit.name)
+def create_habit(
+    habit: HabitCreate,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    new_habit = Habit(name=habit.name, user_id=user_id)
     db.add(new_habit)
     db.commit()
     db.refresh(new_habit)
@@ -82,8 +88,16 @@ def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/habits", response_model=list[HabitOut])
-def list_habits(db: Session = Depends(get_db)):
-    habits = db.query(Habit).order_by(Habit.created_at).all()
+def list_habits(
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    habits = (
+        db.query(Habit)
+        .filter(Habit.user_id == user_id)
+        .order_by(Habit.created_at)
+        .all()
+    )
     if not habits:
         return []
 
@@ -118,8 +132,16 @@ def list_habits(db: Session = Depends(get_db)):
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)
-def delete_habit(habit_id: int, db: Session = Depends(get_db)):
-    habit = db.get(Habit, habit_id)
+def delete_habit(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user_id)
+        .first()
+    )
     if habit is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
@@ -128,8 +150,16 @@ def delete_habit(habit_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/habits/{habit_id}/completions", response_model=CompletionOut)
-def mark_habit_done(habit_id: int, db: Session = Depends(get_db)):
-    habit = db.get(Habit, habit_id)
+def mark_habit_done(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user_id)
+        .first()
+    )
     if habit is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
