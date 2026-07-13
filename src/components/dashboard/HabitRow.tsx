@@ -1,4 +1,5 @@
-import { CheckCircle2, Circle, Flame, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Circle, Flame, ChevronRight, Pencil } from "lucide-react";
 import type { Habit } from "@/lib/types";
 import { habitIcon } from "@/lib/habitIcon";
 import { localDateString } from "@/lib/date";
@@ -10,6 +11,7 @@ interface HabitRowProps {
 }
 
 export default function HabitRow({ habit, onMarkDone, onEdit }: HabitRowProps) {
+  const navigate = useNavigate();
   const Icon = habitIcon(habit.category);
   const isDone = habit.history.includes(localDateString());
   const isWeekly = habit.target_per_week !== null && habit.week_progress !== null;
@@ -17,7 +19,7 @@ export default function HabitRow({ habit, onMarkDone, onEdit }: HabitRowProps) {
   return (
     <li
       className="flex items-center gap-4 px-6 py-3.5 cursor-pointer transition-colors hover:bg-muted/40 group"
-      onClick={() => onEdit(habit)}
+      onClick={() => navigate(`/habits/${habit.id}`)}
     >
       <button
         className="flex-shrink-0 transition-transform active:scale-90 disabled:cursor-default"
@@ -75,6 +77,16 @@ export default function HabitRow({ habit, onMarkDone, onEdit }: HabitRowProps) {
           </>
         )}
       </div>
+      <button
+        className="flex-shrink-0 p-1 rounded-md text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground hover:bg-muted"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit(habit);
+        }}
+        aria-label="Edit habit"
+      >
+        <Pencil size={14} />
+      </button>
       <ChevronRight
         size={14}
         className="text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity"

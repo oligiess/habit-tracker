@@ -66,6 +66,13 @@ class HeatmapEntry(BaseModel):
     level: int
 
 
+class CalendarDayEntry(BaseModel):
+    date: date
+    completed_habit_ids: list[int]
+    total_habits: int
+    level: int
+
+
 class StatsSummary(BaseModel):
     active_streak: int
     best_streak: int

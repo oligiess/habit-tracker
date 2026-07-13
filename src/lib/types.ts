@@ -52,6 +52,13 @@ export interface HeatmapEntry {
   level: number;
 }
 
+export interface CalendarDayEntry {
+  date: string;
+  completed_habit_ids: number[];
+  total_habits: number;
+  level: number;
+}
+
 export interface StatsSummary {
   active_streak: number;
   best_streak: number;

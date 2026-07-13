@@ -1,14 +1,12 @@
-import { Moon, Sun, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface TopBarProps {
   greetingName: string;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
   onNewHabit: () => void;
 }
 
-export default function TopBar({ greetingName, theme, onToggleTheme, onNewHabit }: TopBarProps) {
+export default function TopBar({ greetingName, onNewHabit }: TopBarProps) {
   const dateStr = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -33,13 +31,6 @@ export default function TopBar({ greetingName, theme, onToggleTheme, onNewHabit 
           <Plus size={16} />
           New Habit
         </Button>
-        <button
-          onClick={onToggleTheme}
-          aria-label="Toggle dark mode"
-          className="w-9 h-9 rounded-full flex items-center justify-center border border-border transition-colors hover:bg-muted text-muted-foreground"
-        >
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
       </div>
     </header>
   );

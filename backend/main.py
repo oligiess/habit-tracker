@@ -15,6 +15,7 @@ from .auth import get_current_user_id
 from .database import Base, engine, get_db
 from .models import Completion, Habit
 from .schemas import (
+    CalendarDayEntry,
     CompletionOut,
     HabitCreate,
     HabitOut,
@@ -273,6 +274,20 @@ def _active_daily_habits(db: Session, user_id: uuid.UUID) -> list[Habit]:
     )
 
 
+def _active_habits(db: Session, user_id: uuid.UUID) -> list[Habit]:
+    # Same as _active_daily_habits but includes weekly-cadence habits too --
+    # used by the calendar view, which shades by "was this habit completed
+    # that day" rather than the dashboard's daily-only aggregate.
+    return (
+        db.query(Habit)
+        .filter(
+            Habit.user_id == user_id,
+            Habit.archived_at.is_(None),
+        )
+        .all()
+    )
+
+
 @app.get("/api/stats/weekly", response_model=list[WeeklyStatEntry])
 def weekly_stats(
     db: Session = Depends(get_db),
@@ -358,6 +373,65 @@ def heatmap_stats(
         completed = counts_by_date.get(cursor, 0)
         level = round(completed / total * 4) if total > 0 else 0
         result.append(HeatmapEntry(date=cursor, level=level))
+        cursor += timedelta(days=1)
+    return result
+
+
+@app.get("/api/stats/calendar", response_model=list[CalendarDayEntry])
+def calendar_stats(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
+):
+    if month is None:
+        year, month_num = today.year, today.month
+    else:
+        try:
+            year_str, month_str = month.split("-")
+            year, month_num = int(year_str), int(month_str)
+            date(year, month_num, 1)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="month must be in YYYY-MM format")
+
+    month_start = date(year, month_num, 1)
+    if month_start > today:
+        raise HTTPException(status_code=400, detail="month cannot be in the future")
+
+    next_month_start = date(year + (month_num == 12), (month_num % 12) + 1, 1)
+    month_end_exclusive = min(next_month_start, today + timedelta(days=1))
+
+    habits = _active_habits(db, user_id)
+    total = len(habits)
+
+    habit_ids_by_date: dict[date, list[int]] = defaultdict(list)
+    if total > 0:
+        habit_ids = [habit.id for habit in habits]
+        completions = (
+            db.query(Completion)
+            .filter(
+                Completion.habit_id.in_(habit_ids),
+                Completion.completed_date >= month_start,
+                Completion.completed_date < month_end_exclusive,
+            )
+            .all()
+        )
+        for completion in completions:
+            habit_ids_by_date[completion.completed_date].append(completion.habit_id)
+
+    result = []
+    cursor = month_start
+    while cursor < month_end_exclusive:
+        completed_habit_ids = habit_ids_by_date.get(cursor, [])
+        level = round(len(completed_habit_ids) / total * 4) if total > 0 else 0
+        result.append(
+            CalendarDayEntry(
+                date=cursor,
+                completed_habit_ids=completed_habit_ids,
+                total_habits=total,
+                level=level,
+            )
+        )
         cursor += timedelta(days=1)
     return result
 

@@ -1,10 +1,9 @@
 import type { HeatmapEntry } from "@/lib/types";
+import { HEAT_COLORS } from "@/lib/heatColors";
 
 interface MonthHeatmapProps {
   data: HeatmapEntry[];
 }
-
-const HEAT_COLORS = ["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"];
 
 export default function MonthHeatmap({ data }: MonthHeatmapProps) {
   const today = new Date();

@@ -7,6 +7,7 @@ import type {
   Completion,
   WeeklyStatEntry,
   HeatmapEntry,
+  CalendarDayEntry,
   StatsSummary,
 } from "./types";
 
@@ -84,4 +85,8 @@ export function getHeatmap(month?: string): Promise<HeatmapEntry[]> {
 
 export function getSummary(): Promise<StatsSummary> {
   return request("/stats/summary");
+}
+
+export function getCalendarMonth(month?: string): Promise<CalendarDayEntry[]> {
+  return request(`/stats/calendar${month ? `?month=${month}` : ""}`);
 }
