@@ -28,27 +28,26 @@ deliberately simple rather than feature-heavy.
 - Frontend: HTML / CSS / JavaScript (no framework, no build step)
 - Backend: Python, FastAPI
 - Database: Postgres via Supabase, accessed with SQLAlchemy 2.0
-- Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) (frontend) + [Render](https://habit-tracker-api-2lkb.onrender.com) (backend)
+- Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) — frontend
+  (static, served from `public/`) and backend (FastAPI as a Python
+  serverless function) as one project. Currently mid-migration off Render,
+  see the note above.
 
 ## How to Run Locally
+Requires the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`).
+One-time setup: `vercel login`, then `vercel link` to connect this repo to
+the Vercel project.
 
-### Backend
 ```
-cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1   # Windows PowerShell
 pip install -r requirements.txt
 copy .env.example .env       # then fill in DATABASE_URL with your Supabase connection string
-uvicorn main:app --reload --port 8000
+vercel dev
 ```
-Runs at http://localhost:8000 — check http://localhost:8000/api/health
-
-### Frontend
-```
-cd frontend
-python -m http.server 5500
-```
-Open http://localhost:5500 in a browser.
+Runs the frontend and backend together on one local origin — open the URL
+`vercel dev` prints (typically http://localhost:3000) and check
+`/api/health`.
 
 ## License
 MIT — see [LICENSE](LICENSE).

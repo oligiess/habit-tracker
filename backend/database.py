@@ -12,7 +12,7 @@ if not DATABASE_URL:
         "DATABASE_URL is not set. Create backend/.env from backend/.env.example."
     )
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
