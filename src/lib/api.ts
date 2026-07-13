@@ -6,7 +6,6 @@ import type {
   HabitPatchInput,
   Completion,
   WeeklyStatEntry,
-  HeatmapEntry,
   CalendarDayEntry,
   StatsSummary,
 } from "./types";
@@ -75,12 +74,12 @@ export function markDone(id: number): Promise<Completion> {
   return request(`/habits/${id}/completions`, { method: "POST" });
 }
 
-export function getWeeklyStats(): Promise<WeeklyStatEntry[]> {
-  return request("/stats/weekly");
+export function unmarkDone(id: number): Promise<void> {
+  return request(`/habits/${id}/completions`, { method: "DELETE" });
 }
 
-export function getHeatmap(month?: string): Promise<HeatmapEntry[]> {
-  return request(`/stats/heatmap${month ? `?month=${month}` : ""}`);
+export function getWeeklyStats(): Promise<WeeklyStatEntry[]> {
+  return request("/stats/weekly");
 }
 
 export function getSummary(): Promise<StatsSummary> {

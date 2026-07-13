@@ -7,10 +7,11 @@ import { localDateString } from "@/lib/date";
 interface HabitRowProps {
   habit: Habit;
   onMarkDone: (id: number) => void;
+  onUnmarkDone: (id: number) => void;
   onEdit: (habit: Habit) => void;
 }
 
-export default function HabitRow({ habit, onMarkDone, onEdit }: HabitRowProps) {
+export default function HabitRow({ habit, onMarkDone, onUnmarkDone, onEdit }: HabitRowProps) {
   const navigate = useNavigate();
   const Icon = habitIcon(habit.category);
   const isDone = habit.history.includes(localDateString());
@@ -22,13 +23,16 @@ export default function HabitRow({ habit, onMarkDone, onEdit }: HabitRowProps) {
       onClick={() => navigate(`/habits/${habit.id}`)}
     >
       <button
-        className="flex-shrink-0 transition-transform active:scale-90 disabled:cursor-default"
-        disabled={isDone}
+        className="flex-shrink-0 transition-transform active:scale-90"
         onClick={(e) => {
           e.stopPropagation();
-          if (!isDone) onMarkDone(habit.id);
+          if (isDone) {
+            onUnmarkDone(habit.id);
+          } else {
+            onMarkDone(habit.id);
+          }
         }}
-        aria-label={isDone ? "Already marked done today" : "Mark done"}
+        aria-label={isDone ? "Unmark done" : "Mark done"}
       >
         {isDone ? (
           <CheckCircle2 size={20} className="text-accent" />

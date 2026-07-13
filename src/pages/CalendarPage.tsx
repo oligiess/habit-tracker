@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import * as api from "@/lib/api";
 import { useHabits } from "@/context/HabitsContext";
-import { habitIcon } from "@/lib/habitIcon";
 import { HEAT_COLORS } from "@/lib/heatColors";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import DayCell from "@/components/calendar/DayCell";
 import type { CalendarDayEntry } from "@/lib/types";
 
 function monthKey(d: Date) {
@@ -19,7 +18,6 @@ export default function CalendarPage() {
   const [days, setDays] = useState<CalendarDayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<CalendarDayEntry | null>(null);
 
   const month = monthKey(cursor);
   const isCurrentMonth = month === monthKey(new Date());
@@ -105,19 +103,7 @@ export default function CalendarPage() {
               ))}
               {cells.map((entry, i) =>
                 entry ? (
-                  <button
-                    key={entry.date}
-                    onClick={() => entry.completed_habit_ids.length > 0 && setSelectedDay(entry)}
-                    className="aspect-square rounded-md transition-transform hover:scale-105 flex items-center justify-center text-[11px]"
-                    style={{
-                      background: HEAT_COLORS[entry.level],
-                      fontFamily: "'DM Mono', monospace",
-                      cursor: entry.completed_habit_ids.length > 0 ? "pointer" : "default",
-                    }}
-                    title={`${entry.date}: ${entry.completed_habit_ids.length}/${entry.total_habits} done`}
-                  >
-                    {new Date(entry.date + "T00:00:00").getDate()}
-                  </button>
+                  <DayCell key={entry.date} entry={entry} habitsById={habitsById} />
                 ) : (
                   <div key={`blank-${i}`} />
                 )
@@ -135,36 +121,6 @@ export default function CalendarPage() {
           </>
         )}
       </div>
-
-      <Dialog open={selectedDay !== null} onOpenChange={(open) => !open && setSelectedDay(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDay &&
-                new Date(selectedDay.date + "T00:00:00").toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedDay && `${selectedDay.completed_habit_ids.length}/${selectedDay.total_habits} habits completed`}
-            </DialogDescription>
-          </DialogHeader>
-          <ul className="flex flex-col gap-2">
-            {selectedDay?.completed_habit_ids.map((id) => {
-              const habit = habitsById.get(id);
-              const Icon = habitIcon(habit?.category ?? null);
-              return (
-                <li key={id} className="flex items-center gap-2.5 text-sm text-foreground">
-                  <Icon size={14} className="text-accent" />
-                  {habit?.name ?? "A habit no longer tracked"}
-                </li>
-              );
-            })}
-          </ul>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

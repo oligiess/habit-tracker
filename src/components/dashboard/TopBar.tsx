@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getGreeting } from "@/lib/greeting";
 
 interface TopBarProps {
   greetingName: string;
@@ -23,7 +24,7 @@ export default function TopBar({ greetingName, onNewHabit }: TopBarProps) {
           className="text-xl mt-0.5 leading-tight text-foreground"
           style={{ fontFamily: "'Libre Baskerville', serif" }}
         >
-          Good morning, {greetingName}
+          {getGreeting()}, {greetingName}
         </h1>
       </div>
       <div className="flex items-center gap-3">

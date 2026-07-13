@@ -5,10 +5,11 @@ import HabitRow from "./HabitRow";
 interface HabitListProps {
   habits: Habit[];
   onMarkDone: (id: number) => void;
+  onUnmarkDone: (id: number) => void;
   onEdit: (habit: Habit) => void;
 }
 
-export default function HabitList({ habits, onMarkDone, onEdit }: HabitListProps) {
+export default function HabitList({ habits, onMarkDone, onUnmarkDone, onEdit }: HabitListProps) {
   const today = localDateString();
   const completedCount = habits.filter((h) => h.history.includes(today)).length;
   const totalCount = habits.length;
@@ -45,7 +46,13 @@ export default function HabitList({ habits, onMarkDone, onEdit }: HabitListProps
 
       <ul className="divide-y divide-border/60">
         {habits.map((habit) => (
-          <HabitRow key={habit.id} habit={habit} onMarkDone={onMarkDone} onEdit={onEdit} />
+          <HabitRow
+            key={habit.id}
+            habit={habit}
+            onMarkDone={onMarkDone}
+            onUnmarkDone={onUnmarkDone}
+            onEdit={onEdit}
+          />
         ))}
       </ul>
     </div>

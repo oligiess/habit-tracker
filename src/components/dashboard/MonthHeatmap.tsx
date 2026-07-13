@@ -1,17 +1,18 @@
-import type { HeatmapEntry } from "@/lib/types";
+import { useHabits } from "@/context/HabitsContext";
 import { HEAT_COLORS } from "@/lib/heatColors";
+import DayCell from "@/components/calendar/DayCell";
+import type { CalendarDayEntry } from "@/lib/types";
 
-interface MonthHeatmapProps {
-  data: HeatmapEntry[];
-}
-
-export default function MonthHeatmap({ data }: MonthHeatmapProps) {
+export default function MonthHeatmap() {
+  const { habits, calendarMonth } = useHabits();
   const today = new Date();
   const monthLabel = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const firstDate = data.length ? new Date(data[0].date + "T00:00:00") : today;
+  const firstDate = calendarMonth.length ? new Date(calendarMonth[0].date + "T00:00:00") : today;
   const leadingBlanks = firstDate.getDay();
-  const cells: (HeatmapEntry | null)[] = [...Array(leadingBlanks).fill(null), ...data];
+  const cells: (CalendarDayEntry | null)[] = [...Array(leadingBlanks).fill(null), ...calendarMonth];
+
+  const habitsById = new Map(habits.map((h) => [h.id, h]));
 
   return (
     <div className="rounded-xl border border-border bg-card px-5 pt-5 pb-5">
@@ -33,12 +34,7 @@ export default function MonthHeatmap({ data }: MonthHeatmapProps) {
         ))}
         {cells.map((entry, i) =>
           entry ? (
-            <div
-              key={entry.date}
-              className="aspect-square rounded-sm transition-transform hover:scale-110"
-              style={{ background: HEAT_COLORS[entry.level] }}
-              title={`${entry.date}: ${entry.level * 25}% complete`}
-            />
+            <DayCell key={entry.date} entry={entry} habitsById={habitsById} />
           ) : (
             <div key={`blank-${i}`} />
           )

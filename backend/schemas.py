@@ -69,6 +69,7 @@ class HeatmapEntry(BaseModel):
 class CalendarDayEntry(BaseModel):
     date: date
     completed_habit_ids: list[int]
+    total_habit_ids: list[int]
     total_habits: int
     level: int
 

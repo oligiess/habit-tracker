@@ -262,6 +262,27 @@ def mark_habit_done(
     return completion
 
 
+@app.delete("/api/habits/{habit_id}/completions", status_code=204)
+def unmark_habit_done(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
+):
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user_id)
+        .first()
+    )
+    if habit is None or habit.archived_at is not None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    db.query(Completion).filter(
+        Completion.habit_id == habit_id, Completion.completed_date == today
+    ).delete()
+    db.commit()
+
+
 def _active_daily_habits(db: Session, user_id: uuid.UUID) -> list[Habit]:
     return (
         db.query(Habit)
@@ -403,10 +424,10 @@ def calendar_stats(
 
     habits = _active_habits(db, user_id)
     total = len(habits)
+    habit_ids = [habit.id for habit in habits]
 
     habit_ids_by_date: dict[date, list[int]] = defaultdict(list)
     if total > 0:
-        habit_ids = [habit.id for habit in habits]
         completions = (
             db.query(Completion)
             .filter(
@@ -428,6 +449,7 @@ def calendar_stats(
             CalendarDayEntry(
                 date=cursor,
                 completed_habit_ids=completed_habit_ids,
+                total_habit_ids=habit_ids,
                 total_habits=total,
                 level=level,
             )

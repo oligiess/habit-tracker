@@ -14,11 +14,11 @@ export default function Dashboard() {
   const {
     habits,
     weekly,
-    heatmap,
     summary,
     loading,
     error,
     markDone,
+    unmarkDone,
     createHabit,
     updateHabit,
     deleteHabit,
@@ -37,7 +37,8 @@ export default function Dashboard() {
     setModalOpen(true);
   };
 
-  const greetingName = user?.email?.split("@")[0] ?? "there";
+  const displayName = (user?.user_metadata?.display_name as string | undefined)?.trim();
+  const greetingName = displayName || user?.email?.split("@")[0] || "there";
 
   return (
     <>
@@ -55,11 +56,16 @@ export default function Dashboard() {
             <StatCards summary={summary} />
 
             <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 280px" }}>
-              <HabitList habits={habits} onMarkDone={markDone} onEdit={openEditModal} />
+              <HabitList
+                habits={habits}
+                onMarkDone={markDone}
+                onUnmarkDone={unmarkDone}
+                onEdit={openEditModal}
+              />
 
               <div className="flex flex-col gap-4">
                 <WeeklyChart data={weekly} />
-                <MonthHeatmap data={heatmap} />
+                <MonthHeatmap />
               </div>
             </div>
           </>

@@ -47,14 +47,10 @@ export interface WeeklyStatEntry {
   total: number;
 }
 
-export interface HeatmapEntry {
-  date: string;
-  level: number;
-}
-
 export interface CalendarDayEntry {
   date: string;
   completed_habit_ids: number[];
+  total_habit_ids: number[];
   total_habits: number;
   level: number;
 }
