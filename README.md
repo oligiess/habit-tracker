@@ -7,11 +7,7 @@ deliberately simple rather than feature-heavy.
 
 ## Live Demo
 - App: https://habit-tracker-og111.vercel.app/
-- API: https://habit-tracker-api-2lkb.onrender.com/api/health
-
-> Note: the backend runs on Render's free tier, which spins down after ~15
-> minutes of inactivity. The first request after idle can take 30-50 seconds
-> to wake back up — if the app looks stuck on load, give it a moment.
+- API: https://habit-tracker-og111.vercel.app/api/health
 
 ## Screenshot
 ![HabitDeck screenshot](docs/screenshot.png)
@@ -30,8 +26,7 @@ deliberately simple rather than feature-heavy.
 - Database: Postgres via Supabase, accessed with SQLAlchemy 2.0
 - Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) — frontend
   (static, served from `public/`) and backend (FastAPI as a Python
-  serverless function) as one project. Currently mid-migration off Render,
-  see the note above.
+  serverless function) as one project.
 
 ## How to Run Locally
 Requires the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`).
