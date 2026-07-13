@@ -10,10 +10,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from database import Base, engine, get_db
-from models import Completion, Habit
-from schemas import CompletionOut, HabitCreate, HabitOut
-from streaks import compute_streaks
+from .database import Base, engine, get_db
+from .models import Completion, Habit
+from .schemas import CompletionOut, HabitCreate, HabitOut
+from .streaks import compute_streaks
 
 HISTORY_WINDOW_DAYS = 30
 

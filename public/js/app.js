@@ -1,7 +1,4 @@
-const API_BASE =
-  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:8000/api"
-    : "https://habit-tracker-api-2lkb.onrender.com/api";
+const API_BASE = "/api";
 const DOT_STRIP_DAYS = 7;
 const RING_RADIUS = 24;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
