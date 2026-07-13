@@ -6,8 +6,8 @@ end-to-end practice project: frontend, backend, database, and deployment, kept
 deliberately simple rather than feature-heavy.
 
 ## Live Demo
-- App: https://habit-tracker-og111.vercel.app/
-- API: https://habit-tracker-og111.vercel.app/api/health
+- App: https://habit-deck.vercel.app/
+- API: https://habit-deck.vercel.app/api/health
 
 ## Screenshot
 ![HabitDeck screenshot](docs/screenshot.png)
@@ -29,7 +29,7 @@ deliberately simple rather than feature-heavy.
 - Backend: Python, FastAPI
 - Auth: Supabase Auth (JWT verified locally against Supabase's JWKS endpoint)
 - Database: Postgres via Supabase, accessed with SQLAlchemy 2.0
-- Deployment: [Vercel](https://habit-tracker-og111.vercel.app/) — frontend
+- Deployment: [Vercel](https://habit-deck.vercel.app/) — frontend
   (static build) and backend (FastAPI as a Python serverless function) as one
   project.
 
