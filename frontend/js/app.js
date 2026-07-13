@@ -11,6 +11,30 @@ const todayEl = document.getElementById("today");
 const habitListEl = document.getElementById("habit-list");
 const addHabitForm = document.getElementById("add-habit-form");
 const habitNameInput = document.getElementById("habit-name-input");
+const errorBannerEl = document.getElementById("error-banner");
+const errorBannerTextEl = document.getElementById("error-banner-text");
+const errorBannerDismissEl = document.getElementById("error-banner-dismiss");
+
+function showError(message) {
+  errorBannerTextEl.textContent = message;
+  errorBannerEl.hidden = false;
+}
+
+function hideError() {
+  errorBannerEl.hidden = true;
+}
+
+errorBannerDismissEl.addEventListener("click", hideError);
+
+async function extractErrorMessage(response, fallback) {
+  try {
+    const data = await response.json();
+    if (data && typeof data.detail === "string") return data.detail;
+  } catch {
+    // response body wasn't JSON — fall back
+  }
+  return fallback;
+}
 
 function formatDateISO(d) {
   const year = d.getFullYear();
@@ -136,14 +160,18 @@ function renderHabits(habits) {
 }
 
 async function markHabitDone(habitId) {
+  hideError();
   try {
     const response = await fetch(`${API_BASE}/habits/${habitId}/completions`, {
       method: "POST",
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const message = await extractErrorMessage(response, `Couldn't mark habit done (HTTP ${response.status}).`);
+      throw new Error(message);
+    }
     await loadHabits();
   } catch (err) {
-    alert(`Error marking habit done: ${err.message}`);
+    showError(err.message);
     console.error(err);
   }
 }
@@ -151,14 +179,18 @@ async function markHabitDone(habitId) {
 async function deleteHabit(habitId) {
   if (!confirm("Delete this habit? This also deletes its history.")) return;
 
+  hideError();
   try {
     const response = await fetch(`${API_BASE}/habits/${habitId}`, {
       method: "DELETE",
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const message = await extractErrorMessage(response, `Couldn't delete habit (HTTP ${response.status}).`);
+      throw new Error(message);
+    }
     await loadHabits();
   } catch (err) {
-    alert(`Error deleting habit: ${err.message}`);
+    showError(err.message);
     console.error(err);
   }
 }
@@ -168,17 +200,21 @@ addHabitForm.addEventListener("submit", async (event) => {
   const name = habitNameInput.value.trim();
   if (!name) return;
 
+  hideError();
   try {
     const response = await fetch(`${API_BASE}/habits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const message = await extractErrorMessage(response, `Couldn't add habit (HTTP ${response.status}).`);
+      throw new Error(message);
+    }
     habitNameInput.value = "";
     await loadHabits();
   } catch (err) {
-    alert(`Error adding habit: ${err.message}`);
+    showError(err.message);
     console.error(err);
   }
 });
