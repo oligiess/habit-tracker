@@ -5,7 +5,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -72,6 +72,18 @@ app.add_middleware(
 )
 
 
+def get_client_today(x_client_date: str | None = Header(default=None)) -> date:
+    # The frontend sends its browser-local date so "today" lines up with what
+    # the user sees, instead of the server process's UTC date (Vercel runs
+    # UTC) -- see date.fromisoformat below for the expected YYYY-MM-DD shape.
+    if x_client_date:
+        try:
+            return date.fromisoformat(x_client_date)
+        except ValueError:
+            pass
+    return date.today()
+
+
 def _week_bounds(today: date) -> tuple[date, date]:
     """Return (monday, sunday) of the Mon-Sun week containing today."""
     monday = today - timedelta(days=today.weekday())
@@ -122,6 +134,7 @@ def create_habit(
     habit: HabitCreate,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
     new_habit = Habit(
         name=habit.name,
@@ -133,7 +146,7 @@ def create_habit(
     db.add(new_habit)
     db.commit()
     db.refresh(new_habit)
-    return _build_habit_out(new_habit, set(), date.today())
+    return _build_habit_out(new_habit, set(), today)
 
 
 @app.get("/api/habits", response_model=list[HabitOut])
@@ -141,6 +154,7 @@ def list_habits(
     include_archived: bool = False,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
     query = db.query(Habit).filter(Habit.user_id == user_id)
     if not include_archived:
@@ -158,7 +172,6 @@ def list_habits(
     for completion in completions:
         dates_by_habit[completion.habit_id].add(completion.completed_date)
 
-    today = date.today()
     return [_build_habit_out(habit, dates_by_habit[habit.id], today) for habit in habits]
 
 
@@ -168,6 +181,7 @@ def update_habit(
     patch: HabitPatch,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
     habit = (
         db.query(Habit)
@@ -196,7 +210,7 @@ def update_habit(
         .filter(Completion.habit_id == habit.id)
         .all()
     }
-    return _build_habit_out(habit, completed_dates, date.today())
+    return _build_habit_out(habit, completed_dates, today)
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)
@@ -222,6 +236,7 @@ def mark_habit_done(
     habit_id: int,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
     habit = (
         db.query(Habit)
@@ -231,7 +246,6 @@ def mark_habit_done(
     if habit is None or habit.archived_at is not None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
-    today = date.today()
     existing = (
         db.query(Completion)
         .filter(Completion.habit_id == habit_id, Completion.completed_date == today)
@@ -263,8 +277,8 @@ def _active_daily_habits(db: Session, user_id: uuid.UUID) -> list[Habit]:
 def weekly_stats(
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
-    today = date.today()
     monday, sunday = _week_bounds(today)
 
     habits = _active_daily_habits(db, user_id)
@@ -301,8 +315,8 @@ def heatmap_stats(
     month: str | None = None,
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
-    today = date.today()
     if month is None:
         year, month_num = today.year, today.month
     else:
@@ -352,8 +366,8 @@ def heatmap_stats(
 def stats_summary(
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    today: date = Depends(get_client_today),
 ):
-    today = date.today()
     habits = _active_daily_habits(db, user_id)
     if not habits:
         return StatsSummary(active_streak=0, best_streak=0, month_completion_pct=0.0)
@@ -370,11 +384,14 @@ def stats_summary(
 
     active_streak, best_streak = compute_perfect_day_streaks(dates_by_habit, today)
 
+    # Only count days that have fully finished -- today is still in progress,
+    # so it's excluded from both the possible-completions denominator and the
+    # completed-this-month numerator (a day-1-of-month lands on 0/0 -> 0.0%).
     month_start = today.replace(day=1)
-    days_elapsed = (today - month_start).days + 1
+    days_elapsed = (today - month_start).days
     possible = days_elapsed * len(habit_ids)
     completed_this_month = sum(
-        1 for dates in dates_by_habit.values() for d in dates if d >= month_start
+        1 for dates in dates_by_habit.values() for d in dates if month_start <= d < today
     )
     month_completion_pct = (
         round(completed_this_month / possible * 100, 1) if possible else 0.0
