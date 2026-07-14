@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import * as api from "@/lib/api";
 import { useHabits } from "@/context/HabitsContext";
 import { HEAT_COLORS } from "@/lib/heatColors";
 import DayCell from "@/components/calendar/DayCell";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { CalendarDayEntry } from "@/lib/types";
 
 function monthKey(d: Date) {
@@ -13,7 +15,7 @@ function monthKey(d: Date) {
 }
 
 export default function CalendarPage() {
-  const { habits } = useHabits();
+  const { habits, loading: habitsLoading } = useHabits();
   const [cursor, setCursor] = useState(() => new Date());
   const [days, setDays] = useState<CalendarDayEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,11 +87,38 @@ export default function CalendarPage() {
           </button>
         </div>
 
-        {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
+        {loading && (
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <div
+                key={i}
+                className="text-center text-xs text-muted-foreground/40"
+                style={{ fontFamily: "'DM Mono', monospace" }}
+              >
+                {d}
+              </div>
+            ))}
+            {Array.from({ length: 35 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square rounded-md" />
+            ))}
+          </div>
+        )}
 
         {!loading && error && <p className="text-sm text-destructive">{error}</p>}
 
-        {!loading && !error && (
+        {!loading && !error && !habitsLoading && habits.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <CalendarDays size={28} className="text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              No habits yet. Add one from the dashboard to start filling in your calendar.
+            </p>
+            <Link to="/" className="text-sm text-primary hover:underline w-fit">
+              Back to dashboard
+            </Link>
+          </div>
+        )}
+
+        {!loading && !error && (habitsLoading || habits.length > 0) && (
           <>
             <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
               {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
