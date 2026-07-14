@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ export default function CreateEditHabitModal({
   const isEdit = habit !== null;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { register, handleSubmit, control, watch, reset } = useForm<FormValues>({
     defaultValues: toFormValues(habit),
@@ -113,7 +115,7 @@ export default function CreateEditHabitModal({
 
   const handleDelete = async () => {
     if (!habit) return;
-    if (!window.confirm(`Delete "${habit.name}"? This removes all of its history too.`)) return;
+    setConfirmDeleteOpen(false);
     setSubmitting(true);
     try {
       await onDelete(habit.id);
@@ -197,7 +199,13 @@ export default function CreateEditHabitModal({
                 <Button type="button" variant="outline" size="sm" onClick={handleArchiveToggle} disabled={submitting}>
                   {habit.archived ? "Unarchive" : "Archive"}
                 </Button>
-                <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={submitting}>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  disabled={submitting}
+                >
                   Delete
                 </Button>
               </div>
@@ -208,6 +216,19 @@ export default function CreateEditHabitModal({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {habit && (
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          onOpenChange={setConfirmDeleteOpen}
+          title="Delete habit?"
+          description={`Delete "${habit.name}"? This removes all of its history too. This can't be undone.`}
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+          destructive
+          submitting={submitting}
+        />
+      )}
     </Dialog>
   );
 }

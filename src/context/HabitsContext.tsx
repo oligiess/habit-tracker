@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import * as api from "@/lib/api";
 import type {
   Habit,
@@ -31,6 +32,7 @@ const HabitsContext = createContext<HabitsContextValue | null>(null);
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
   const { signOut } = useAuth();
+  const { toast } = useToast();
 
   const [habits, setHabits] = useState<Habit[]>([]);
   const [weekly, setWeekly] = useState<WeeklyStatEntry[]>([]);
@@ -71,6 +73,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     try {
       await api.markDone(id);
       await refresh();
+      toast("Marked done");
     } catch {
       setError("Couldn't mark that habit done. Try again.");
     }
@@ -80,6 +83,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     try {
       await api.unmarkDone(id);
       await refresh();
+      toast("Unmarked");
     } catch {
       setError("Couldn't unmark that habit. Try again.");
     }
@@ -88,16 +92,21 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const createHabit = async (input: HabitCreateInput) => {
     await api.createHabit(input);
     await refresh();
+    toast("Habit created");
   };
 
   const updateHabit = async (id: number, patch: HabitPatchInput) => {
     await api.updateHabit(id, patch);
     await refresh();
+    if (patch.archived === true) toast("Habit archived");
+    else if (patch.archived === false) toast("Habit unarchived");
+    else toast("Habit updated");
   };
 
   const deleteHabit = async (id: number) => {
     await api.deleteHabit(id);
     await refresh();
+    toast("Habit deleted");
   };
 
   return (
