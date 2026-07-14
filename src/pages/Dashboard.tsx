@@ -8,12 +8,12 @@ import HabitList from "@/components/dashboard/HabitList";
 import WeeklyChart from "@/components/dashboard/WeeklyChart";
 import MonthHeatmap from "@/components/dashboard/MonthHeatmap";
 import CreateEditHabitModal from "@/components/dashboard/CreateEditHabitModal";
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const {
     habits,
-    weekly,
     summary,
     loading,
     error,
@@ -51,6 +51,8 @@ export default function Dashboard() {
           </div>
         )}
 
+        {loading && <DashboardSkeleton />}
+
         {!loading && (
           <>
             <StatCards summary={summary} />
@@ -64,7 +66,7 @@ export default function Dashboard() {
               />
 
               <div className="flex flex-col gap-4">
-                <WeeklyChart data={weekly} />
+                <WeeklyChart />
                 <MonthHeatmap />
               </div>
             </div>

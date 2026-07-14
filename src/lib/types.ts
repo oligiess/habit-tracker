@@ -5,6 +5,11 @@ export interface WeekProgress {
   longest_streak: number;
 }
 
+export interface CompletionTime {
+  date: string;
+  completed_at: string;
+}
+
 export interface Habit {
   id: number;
   name: string;
@@ -16,6 +21,7 @@ export interface Habit {
   current_streak: number;
   longest_streak: number;
   history: string[];
+  completion_times: CompletionTime[];
   week_progress: WeekProgress | null;
 }
 
@@ -38,6 +44,7 @@ export interface Completion {
   id: number;
   habit_id: number;
   completed_date: string;
+  completed_at: string;
 }
 
 export interface WeeklyStatEntry {
@@ -45,6 +52,8 @@ export interface WeeklyStatEntry {
   date: string;
   completed: number;
   total: number;
+  completed_habit_ids: number[];
+  total_habit_ids: number[];
 }
 
 export interface CalendarDayEntry {

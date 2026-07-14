@@ -34,3 +34,6 @@ class Completion(Base):
         ForeignKey("habits.id", ondelete="CASCADE"), nullable=False
     )
     completed_date: Mapped[date] = mapped_column(Date, nullable=False)
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

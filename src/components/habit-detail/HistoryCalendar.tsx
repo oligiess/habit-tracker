@@ -1,12 +1,16 @@
 import { HEAT_COLORS } from "@/lib/heatColors";
 import { localDateString } from "@/lib/date";
+import type { CompletionTime } from "@/lib/types";
+import DayHoverCard from "./DayHoverCard";
 
 interface HistoryCalendarProps {
   history: string[];
+  completionTimes?: CompletionTime[];
 }
 
-export default function HistoryCalendar({ history }: HistoryCalendarProps) {
+export default function HistoryCalendar({ history, completionTimes = [] }: HistoryCalendarProps) {
   const historySet = new Set(history);
+  const timesByDate = new Map(completionTimes.map((c) => [c.date, c.completed_at]));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -35,9 +39,8 @@ export default function HistoryCalendar({ history }: HistoryCalendarProps) {
           const dateStr = localDateString(date);
           const isFuture = date > today;
           const done = historySet.has(dateStr);
-          return (
+          const cell = (
             <div
-              key={dateStr}
               className="aspect-square rounded-sm flex items-center justify-center text-xs transition-transform hover:scale-110"
               style={{
                 background: isFuture ? "var(--muted)" : done ? HEAT_COLORS[4] : HEAT_COLORS[0],
@@ -45,10 +48,19 @@ export default function HistoryCalendar({ history }: HistoryCalendarProps) {
                 color: isFuture ? "var(--muted-foreground)" : done ? "white" : "var(--muted-foreground)",
                 fontFamily: "'DM Mono', monospace",
               }}
-              title={dateStr}
             >
               {date.getDate()}
             </div>
+          );
+
+          if (isFuture) {
+            return <div key={dateStr}>{cell}</div>;
+          }
+
+          return (
+            <DayHoverCard key={dateStr} date={dateStr} completedAt={timesByDate.get(dateStr) ?? null}>
+              {cell}
+            </DayHoverCard>
           );
         })}
       </div>

@@ -17,6 +17,7 @@ from .models import Completion, Habit
 from .schemas import (
     CalendarDayEntry,
     CompletionOut,
+    CompletionTimeEntry,
     HabitCreate,
     HabitOut,
     HabitPatch,
@@ -91,10 +92,18 @@ def _week_bounds(today: date) -> tuple[date, date]:
     return monday, monday + timedelta(days=6)
 
 
-def _build_habit_out(habit: Habit, completed_dates: set[date], today: date) -> HabitOut:
+def _build_habit_out(
+    habit: Habit,
+    completed_dates: set[date],
+    today: date,
+    completed_at_by_date: dict[date, datetime],
+) -> HabitOut:
     current_streak, longest_streak = compute_streaks(completed_dates, today)
     window_start = today - timedelta(days=HISTORY_WINDOW_DAYS - 1)
     history = sorted(d for d in completed_dates if d >= window_start)
+    completion_times = [
+        CompletionTimeEntry(date=d, completed_at=completed_at_by_date[d]) for d in history
+    ]
 
     week_progress = None
     if habit.target_per_week is not None:
@@ -121,6 +130,7 @@ def _build_habit_out(habit: Habit, completed_dates: set[date], today: date) -> H
         current_streak=current_streak,
         longest_streak=longest_streak,
         history=history,
+        completion_times=completion_times,
         week_progress=week_progress,
     )
 
@@ -147,7 +157,7 @@ def create_habit(
     db.add(new_habit)
     db.commit()
     db.refresh(new_habit)
-    return _build_habit_out(new_habit, set(), today)
+    return _build_habit_out(new_habit, set(), today, {})
 
 
 @app.get("/api/habits", response_model=list[HabitOut])
@@ -170,10 +180,15 @@ def list_habits(
     )
 
     dates_by_habit: dict[int, set[date]] = defaultdict(set)
+    completed_at_by_habit: dict[int, dict[date, datetime]] = defaultdict(dict)
     for completion in completions:
         dates_by_habit[completion.habit_id].add(completion.completed_date)
+        completed_at_by_habit[completion.habit_id][completion.completed_date] = completion.completed_at
 
-    return [_build_habit_out(habit, dates_by_habit[habit.id], today) for habit in habits]
+    return [
+        _build_habit_out(habit, dates_by_habit[habit.id], today, completed_at_by_habit[habit.id])
+        for habit in habits
+    ]
 
 
 @app.patch("/api/habits/{habit_id}", response_model=HabitOut)
@@ -205,13 +220,12 @@ def update_habit(
     db.commit()
     db.refresh(habit)
 
-    completed_dates = {
-        completion.completed_date
-        for completion in db.query(Completion)
-        .filter(Completion.habit_id == habit.id)
-        .all()
+    habit_completions = db.query(Completion).filter(Completion.habit_id == habit.id).all()
+    completed_dates = {completion.completed_date for completion in habit_completions}
+    completed_at_by_date = {
+        completion.completed_date: completion.completed_at for completion in habit_completions
     }
-    return _build_habit_out(habit, completed_dates, today)
+    return _build_habit_out(habit, completed_dates, today, completed_at_by_date)
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)
@@ -318,11 +332,10 @@ def weekly_stats(
     monday, sunday = _week_bounds(today)
 
     habits = _active_daily_habits(db, user_id)
-    total = len(habits)
+    habit_ids = [habit.id for habit in habits]
 
-    counts_by_date: dict[date, int] = defaultdict(int)
-    if total > 0:
-        habit_ids = [habit.id for habit in habits]
+    completed_ids_by_date: dict[date, list[int]] = defaultdict(list)
+    if habit_ids:
         completions = (
             db.query(Completion)
             .filter(
@@ -333,14 +346,16 @@ def weekly_stats(
             .all()
         )
         for completion in completions:
-            counts_by_date[completion.completed_date] += 1
+            completed_ids_by_date[completion.completed_date].append(completion.habit_id)
 
     return [
         WeeklyStatEntry(
             day=WEEKDAY_LABELS[i],
             date=monday + timedelta(days=i),
-            completed=counts_by_date.get(monday + timedelta(days=i), 0),
-            total=total,
+            completed=len(completed_ids_by_date.get(monday + timedelta(days=i), [])),
+            total=len(habit_ids),
+            completed_habit_ids=completed_ids_by_date.get(monday + timedelta(days=i), []),
+            total_habit_ids=habit_ids,
         )
         for i in range(7)
     ]

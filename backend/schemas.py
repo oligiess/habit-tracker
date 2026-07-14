@@ -30,6 +30,11 @@ class WeekProgress(BaseModel):
     longest_streak: int
 
 
+class CompletionTimeEntry(BaseModel):
+    date: date
+    completed_at: datetime
+
+
 class HabitOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +48,7 @@ class HabitOut(BaseModel):
     current_streak: int
     longest_streak: int
     history: list[date]
+    completion_times: list[CompletionTimeEntry]
     week_progress: WeekProgress | None = None
 
 
@@ -52,6 +58,7 @@ class CompletionOut(BaseModel):
     id: int
     habit_id: int
     completed_date: date
+    completed_at: datetime
 
 
 class WeeklyStatEntry(BaseModel):
@@ -59,6 +66,8 @@ class WeeklyStatEntry(BaseModel):
     date: date
     completed: int
     total: int
+    completed_habit_ids: list[int]
+    total_habit_ids: list[int]
 
 
 class HeatmapEntry(BaseModel):

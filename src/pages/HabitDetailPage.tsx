@@ -6,7 +6,9 @@ import { habitIcon } from "@/lib/habitIcon";
 import { Button } from "@/components/ui/button";
 import DotStrip from "@/components/habit-detail/DotStrip";
 import HistoryCalendar from "@/components/habit-detail/HistoryCalendar";
+import CompletionTimeChart from "@/components/habit-detail/CompletionTimeChart";
 import CreateEditHabitModal from "@/components/dashboard/CreateEditHabitModal";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HabitDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +19,38 @@ export default function HabitDetailPage() {
   const habit = habits.find((h) => h.id === Number(id)) ?? null;
 
   if (loading) {
-    return <div className="px-8 py-6 text-sm text-muted-foreground">Loading...</div>;
+    return (
+      <div className="px-8 py-6 flex flex-col gap-6">
+        <Skeleton className="h-4 w-14" />
+
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-12 h-12 rounded-xl flex-shrink-0" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3.5 w-24" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl px-5 py-4 border border-border bg-card flex items-center gap-4">
+              <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-6 w-10" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border bg-card px-5 py-5 flex flex-col gap-4">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (!habit) {
@@ -58,7 +91,7 @@ export default function HabitDetailPage() {
             <Icon size={22} className="text-accent" />
           </div>
           <div>
-            <h1 className="text-xl leading-tight text-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+            <h1 className="text-2xl font-bold leading-tight text-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
               {habit.name}
             </h1>
             <p className="text-sm mt-0.5 text-muted-foreground">
@@ -130,17 +163,19 @@ export default function HabitDetailPage() {
       )}
 
       <div className="rounded-xl border border-border bg-card px-5 py-5">
-        <h2 className="text-sm mb-4 text-card-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+        <h2 className="text-base font-semibold mb-4 text-card-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
           Last 14 days
         </h2>
-        <DotStrip history={habit.history} days={14} />
+        <DotStrip history={habit.history} completionTimes={habit.completion_times} days={14} />
       </div>
 
+      <CompletionTimeChart completionTimes={habit.completion_times} days={14} />
+
       <div className="rounded-xl border border-border bg-card px-5 py-5">
-        <h2 className="text-sm mb-4 text-card-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+        <h2 className="text-base font-semibold mb-4 text-card-foreground" style={{ fontFamily: "'Libre Baskerville', serif" }}>
           This month
         </h2>
-        <HistoryCalendar history={habit.history} />
+        <HistoryCalendar history={habit.history} completionTimes={habit.completion_times} />
       </div>
 
       <CreateEditHabitModal

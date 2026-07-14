@@ -1,12 +1,62 @@
-import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
-import type { WeeklyStatEntry } from "@/lib/types";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { useHabits } from "@/context/HabitsContext";
+import DayCompletionHoverCard from "@/components/calendar/DayCompletionHoverCard";
+import type { Habit, WeeklyStatEntry } from "@/lib/types";
 
-interface WeeklyChartProps {
-  data: WeeklyStatEntry[];
+interface ChartEntry extends WeeklyStatEntry {
+  pct: number;
 }
 
-export default function WeeklyChart({ data }: WeeklyChartProps) {
-  const totalPossible = data.reduce((sum, d) => sum + d.total, 0);
+interface WeeklyBarProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  payload?: ChartEntry;
+}
+
+function barFill(completed: number, total: number): string {
+  return total > 0 && completed === total
+    ? "var(--accent)"
+    : completed >= Math.ceil(total * 0.6)
+      ? "var(--primary)"
+      : "var(--muted)";
+}
+
+function WeeklyBar({ props, habitsById }: { props: WeeklyBarProps; habitsById: Map<number, Habit> }) {
+  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
+  const rect = (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx={3}
+      ry={3}
+      fill={barFill(payload?.completed ?? 0, payload?.total ?? 0)}
+    />
+  );
+
+  if (!payload) {
+    return rect;
+  }
+
+  return (
+    <DayCompletionHoverCard entry={payload} habitsById={habitsById}>
+      {rect}
+    </DayCompletionHoverCard>
+  );
+}
+
+export default function WeeklyChart() {
+  const { weekly, habits } = useHabits();
+  const habitsById = new Map(habits.map((h) => [h.id, h]));
+
+  const totalPossible = weekly.reduce((sum, d) => sum + d.total, 0);
+  const chartData: ChartEntry[] = weekly.map((d) => ({
+    ...d,
+    pct: d.total > 0 ? d.completed / d.total : 0,
+  }));
 
   return (
     <div className="rounded-xl border border-border bg-card px-5 pt-5 pb-4">
@@ -14,27 +64,21 @@ export default function WeeklyChart({ data }: WeeklyChartProps) {
         This Week
       </h2>
       <ResponsiveContainer width="100%" height={100}>
-        <BarChart data={data} barSize={18} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+        <BarChart data={chartData} barSize={18} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <XAxis
             dataKey="day"
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "'DM Mono', monospace" }}
           />
-          <Bar dataKey="completed" radius={[4, 4, 0, 0]}>
-            {data.map((entry, i) => (
-              <Cell
-                key={i}
-                fill={
-                  entry.total > 0 && entry.completed === entry.total
-                    ? "var(--accent)"
-                    : entry.completed >= Math.ceil(entry.total * 0.6)
-                      ? "var(--primary)"
-                      : "var(--muted)"
-                }
-              />
-            ))}
-          </Bar>
+          <YAxis hide domain={[0, 1]} />
+          <Bar
+            dataKey="pct"
+            shape={(props: unknown) => {
+              const { key, ...rest } = props as { key?: string } & WeeklyBarProps;
+              return <WeeklyBar key={key} props={rest} habitsById={habitsById} />;
+            }}
+          />
         </BarChart>
       </ResponsiveContainer>
       <div className="flex items-center justify-end mt-2">
