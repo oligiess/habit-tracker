@@ -5,13 +5,14 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
+import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .auth import get_current_user_id
+from .auth import delete_supabase_user, get_current_user_id
 from .database import Base, engine, get_db
 from .models import Completion, Habit
 from .schemas import (
@@ -226,6 +227,29 @@ def update_habit(
         completion.completed_date: completion.completed_at for completion in habit_completions
     }
     return _build_habit_out(habit, completed_dates, today, completed_at_by_date)
+
+
+@app.delete("/api/account", status_code=204)
+def delete_account(
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    # Delete the Supabase auth user first: if this fails (bad/missing
+    # service role key, network error), the account and its data are left
+    # untouched and the user can just retry, rather than losing their
+    # habits while the login itself still exists.
+    try:
+        delete_supabase_user(user_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except httpx.HTTPError:
+        logger.exception("Failed to delete Supabase auth user %s", user_id)
+        raise HTTPException(
+            status_code=502, detail="Couldn't delete your account. Please try again."
+        )
+
+    db.query(Habit).filter(Habit.user_id == user_id).delete()
+    db.commit()
 
 
 @app.delete("/api/habits/{habit_id}", status_code=204)

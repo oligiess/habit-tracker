@@ -70,6 +70,10 @@ export function deleteHabit(id: number): Promise<void> {
   return request(`/habits/${id}`, { method: "DELETE" });
 }
 
+export function deleteAccount(): Promise<void> {
+  return request("/account", { method: "DELETE" });
+}
+
 export function markDone(id: number): Promise<Completion> {
   return request(`/habits/${id}/completions`, { method: "POST" });
 }

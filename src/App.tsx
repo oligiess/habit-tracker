@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
 import LoginPage from "@/pages/LoginPage";
+import OnboardingPage from "@/pages/OnboardingPage";
 import Dashboard from "@/pages/Dashboard";
 import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -19,6 +20,11 @@ function Gate() {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  const needsOnboarding = !user.user_metadata?.onboarded && !user.user_metadata?.display_name;
+  if (needsOnboarding) {
+    return <OnboardingPage />;
   }
 
   return (

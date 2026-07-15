@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import * as api from "@/lib/api";
 
 interface ProfileUpdate {
   display_name?: string;
   avatar_icon?: string;
+  onboarded?: boolean;
 }
 
 interface AuthContextValue {
@@ -16,6 +18,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   updateProfile: (update: ProfileUpdate) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,6 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
+  const deleteAccount: AuthContextValue["deleteAccount"] = async () => {
+    try {
+      await api.deleteAccount();
+      await supabase.auth.signOut();
+      return { error: null };
+    } catch (e) {
+      return { error: e instanceof api.ApiError ? e.message : "Something went wrong. Please try again." };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -81,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         updateProfile,
         updatePassword,
+        deleteAccount,
       }}
     >
       {children}

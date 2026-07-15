@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface ProfileFormValues {
   displayName: string;
@@ -19,8 +20,23 @@ interface PasswordFormValues {
 }
 
 export default function SettingsPage() {
-  const { user, updateProfile, updatePassword } = useAuth();
+  const { user, updateProfile, updatePassword, deleteAccount } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    setDeleteSubmitting(true);
+    setDeleteError(null);
+    const { error } = await deleteAccount();
+    setDeleteSubmitting(false);
+    if (error) {
+      setDeleteError(error);
+      setDeleteOpen(false);
+    }
+  };
 
   const [selectedIcon, setSelectedIcon] = useState<string | null>(
     (user?.user_metadata?.avatar_icon as string | undefined) ?? null
@@ -191,6 +207,41 @@ export default function SettingsPage() {
           </div>
         </form>
       </section>
+
+      <section className="rounded-xl border border-destructive/30 bg-card px-6 py-5 flex flex-col gap-4">
+        <h2 className="text-sm text-destructive" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+          Danger zone
+        </h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-card-foreground">Delete account</p>
+            <p className="text-xs text-muted-foreground">
+              Permanently deletes your account and all habit data. This cannot be undone.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="flex-shrink-0"
+            onClick={() => setDeleteOpen(true)}
+          >
+            Delete account
+          </Button>
+        </div>
+        {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+      </section>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete your account?"
+        description="This permanently deletes your account and all habit data. This cannot be undone."
+        confirmLabel={deleteSubmitting ? "Deleting..." : "Delete account"}
+        onConfirm={handleDeleteAccount}
+        destructive
+        submitting={deleteSubmitting}
+      />
     </div>
   );
 }
